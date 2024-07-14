@@ -1,0 +1,16 @@
+{
+	"image": "mcr.microsoft.com/devcontainers/universal:2",
+	"features": {},
+	"postCreateCommand": "bash ./.devcontainer/scripts/postCreateCommand.sh",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"golang.go",
+				"github.vscode-github-actions"
+			],
+			"settings": {
+				"go.formatTool": "goimports"
+			}
+		}
+	}
+}
