@@ -6,7 +6,9 @@
 		"vscode": {
 			"extensions": [
 				"golang.go",
-				"github.vscode-github-actions"
+				"github.vscode-github-actions",
+				"ms-vscode.makefile-tools",
+				"EditorConfig.EditorConfig"
 			],
 			"settings": {
 				"go.formatTool": "goimports"
