@@ -9,6 +9,7 @@ import (
 
 // percentile represents a tracker for calculating percentiles of time durations.
 type percentile struct {
+	counter uint64
 	read *ddsketch.DDSketch
 }
 
@@ -32,6 +33,7 @@ func newPercentile() (LatencyTracker, error) {
 
 // recordMicroseconds records a time duration in microseconds.
 func (p *percentile) recordMicroseconds(v time.Duration) error {
+	p.counter = p.counter + 1
 	return p.read.Add(float64(v.Microseconds()))
 }
 
@@ -46,5 +48,10 @@ func (p *percentile) percentileMicroseconds(percentile float64) (time.Duration, 
 		return 0, fmt.Errorf("failed to get value at percentile %f: %v", percentile, err)
 	}
 	return time.Duration(d) * time.Microsecond, nil
+}
+
+//　getRecordCount returns the number of records.
+func (p *percentile) getRecordCount() uint64 {
+	return p.counter
 }
 

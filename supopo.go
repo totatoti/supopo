@@ -21,6 +21,9 @@ type LatencyPercentileRetriever interface {
 	// percentileMicroseconds returns the time duration at the specified percentile.
 	// It returns an error if the retrieval fails.
 	percentileMicroseconds(percentile float64) (time.Duration, error)
+
+	// getRecordCount returns the number of records.
+	getRecordCount() uint64
 }
 
 // LatencyTracker combines both recording and retrieving functionality.

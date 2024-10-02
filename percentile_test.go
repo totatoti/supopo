@@ -121,6 +121,41 @@ func Test_percentile_percentileMicroseconds(t *testing.T) {
 	}
 }
 
+func Test_percentile_getRecordCount(t *testing.T) {
+	tests := []struct {
+		name       string
+		percentile LatencyTracker
+		want       uint64
+	}{
+		{
+			name: "Test for no records",
+			percentile: func() LatencyTracker {
+				p, _ := newPercentile()
+				return p
+			}(),
+			want: 0,
+		},
+		{
+			name: "Test for multiple records",
+			percentile: func() LatencyTracker {
+				p, _ := newPercentile()
+				p.recordMicroseconds(100 * time.Microsecond)
+				p.recordMicroseconds(200 * time.Microsecond)
+				p.recordMicroseconds(300 * time.Microsecond)
+				return p
+			}(),
+			want: 3,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.percentile.getRecordCount(); got != tt.want {
+				t.Errorf("getRecordCount() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_percentile_useLatencyPercentileRetriever(t *testing.T) {
 	type args struct {
 		percentile float64
