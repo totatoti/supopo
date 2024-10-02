@@ -9,15 +9,24 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// percentileTracker defines an interface for recording and retrieving latency percentiles.
-type percentileTracker interface {
+// LatencyRecorder defines an interface for recording latency in microseconds.
+type LatencyRecorder interface {
 	// recordMicroseconds records a time duration in microseconds.
 	// It returns an error if the recording fails.
 	recordMicroseconds(v time.Duration) error
+}
 
+// LatencyPercentileRetriever defines an interface for retrieving latency percentiles.
+type LatencyPercentileRetriever interface {
 	// percentileMicroseconds returns the time duration at the specified percentile.
 	// It returns an error if the retrieval fails.
 	percentileMicroseconds(percentile float64) (time.Duration, error)
+}
+
+// LatencyTracker combines both recording and retrieving functionality.
+type LatencyTracker interface {
+	LatencyRecorder
+	LatencyPercentileRetriever
 }
 
 // Option is a type used to implement the Functional Options Pattern.
@@ -60,7 +69,7 @@ func WithMinDataPoints(minDataPoints uint) Option {
 // config holds the configuration options for a Supopo instance.
 // It includes settings for latency tracking, tracing, and the minimum data points required for asynchronous execution.
 type config struct {
-	percentileTracker percentileTracker
+	latencyTracker LatencyTracker
 	tracer            trace.Tracer
 	minDataPoints     uint
 }
@@ -102,7 +111,7 @@ func NewSupopo[T any](
 
 	s := &Supopo[T]{
 		config: config{
-			percentileTracker: p,
+			latencyTracker: p,
 			tracer:            nil,
 			minDataPoints:     100,
 		},
@@ -130,7 +139,7 @@ func NewSupopo[T any](
 // and increments the count of executed functions. This allows the Supopo instance to track
 // the distribution of function execution times for later analysis.
 func (s *Supopo[T]) record(v time.Duration) {
-	s.percentileTracker.recordMicroseconds(v)
+	s.latencyTracker.recordMicroseconds(v)
 	s.count++
 }
 
@@ -216,7 +225,7 @@ func (s *Supopo[T]) Run(ctx context.Context, fn func(context.Context) (*T, error
 		return s.executeFn(ctx, "primary-request", fn)
 	}
 
-	percentile, err := s.percentileTracker.percentileMicroseconds(s.percentile)
+	percentile, err := s.latencyTracker.percentileMicroseconds(s.percentile)
 	if err != nil {
 		return nil, err
 	}

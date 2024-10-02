@@ -13,7 +13,7 @@ type percentile struct {
 }
 
 // newPercentile returns a new percentileTracker that implements the percentileTracker interface.
-func newPercentile() (percentileTracker, error) {
+func newPercentile() (LatencyTracker, error) {
 
 	/*
 		> If the values are time in seconds, maxNumBins = 2048 covers a time range from 80 microseconds to 1 year.
@@ -47,3 +47,4 @@ func (p *percentile) percentileMicroseconds(percentile float64) (time.Duration, 
 	}
 	return time.Duration(d) * time.Microsecond, nil
 }
+

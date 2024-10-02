@@ -40,7 +40,7 @@ func Test_percentile_percentileMicroseconds(t *testing.T) {
 	}
 	tests := []struct {
 		name        string
-		percentile  percentileTracker
+		percentile  LatencyTracker
 		args        args
 		want        time.Duration
 		wantErr     bool
@@ -48,7 +48,7 @@ func Test_percentile_percentileMicroseconds(t *testing.T) {
 	}{
 		{
 			name: "Test for invalid percentile value below 0",
-			percentile: func() percentileTracker {
+			percentile: func() LatencyTracker {
 				p, _ := newPercentile()
 				p.recordMicroseconds(100 * time.Microsecond)
 				return p
@@ -60,7 +60,7 @@ func Test_percentile_percentileMicroseconds(t *testing.T) {
 		},
 		{
 			name: "Test for valid percentile value at lower limit",
-			percentile: func() percentileTracker {
+			percentile: func() LatencyTracker {
 				p, _ := newPercentile()
 				p.recordMicroseconds(100 * time.Microsecond)
 				return p
@@ -71,7 +71,7 @@ func Test_percentile_percentileMicroseconds(t *testing.T) {
 		},
 		{
 			name: "Test for invalid percentile value above 1",
-			percentile: func() percentileTracker {
+			percentile: func() LatencyTracker {
 				p, _ := newPercentile()
 				p.recordMicroseconds(100 * time.Microsecond)
 				return p
@@ -83,7 +83,7 @@ func Test_percentile_percentileMicroseconds(t *testing.T) {
 		},
 		{
 			name: "Test for valid percentile value at upper limit",
-			percentile: func() percentileTracker {
+			percentile: func() LatencyTracker {
 				p, _ := newPercentile()
 				p.recordMicroseconds(100 * time.Microsecond)
 				return p
@@ -94,7 +94,7 @@ func Test_percentile_percentileMicroseconds(t *testing.T) {
 		},
 		{
 			name: "Test for no records",
-			percentile: func() percentileTracker {
+			percentile: func() LatencyTracker {
 				p, _ := newPercentile()
 				return p
 			}(),
@@ -107,6 +107,61 @@ func Test_percentile_percentileMicroseconds(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.percentile.percentileMicroseconds(tt.args.percentile)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("percentileMicroseconds() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil && err.Error() != tt.wantErrType.Error() {
+				t.Errorf("percentileMicroseconds() error = %v, wantErrType %v", err, tt.wantErrType)
+			}
+			if got != tt.want {
+				t.Errorf("percentileMicroseconds() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_percentile_useLatencyPercentileRetriever(t *testing.T) {
+	type args struct {
+		percentile float64
+	}
+	tests := []struct {
+		name        string
+		percentile  LatencyTracker
+		args        args
+		want        time.Duration
+		wantErr     bool
+		wantErrType error
+	}{
+		{
+			name: "Test for valid percentile value at upper limit",
+			percentile: func() LatencyTracker {
+				p, _ := newPercentile()
+				p.recordMicroseconds(100 * time.Microsecond)
+				return p
+			}(),
+			args:    args{percentile: 1.0},
+			want:    100 * time.Microsecond,
+			wantErr: false,
+		},
+		{
+			name: "Test for no records",
+			percentile: func() LatencyTracker {
+				p, _ := newPercentile()
+				return p
+			}(),
+			args:        args{percentile: 0.5},
+			want:        0,
+			wantErr:     true,
+			wantErrType: fmt.Errorf("failed to get value at percentile 0.500000: no such element exists"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Use the LatencyPercentileRetriever interface
+			retriver := tt.percentile.(LatencyPercentileRetriever)
+			got, err := retriver.percentileMicroseconds(tt.args.percentile)
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("percentileMicroseconds() error = %v, wantErr %v", err, tt.wantErr)
 				return
