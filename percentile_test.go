@@ -2,6 +2,9 @@ package supopo
 
 import (
 	"fmt"
+	"math"
+	"runtime"
+	"sync"
 	"testing"
 	"time"
 )
@@ -209,4 +212,53 @@ func Test_percentile_useLatencyPercentileRetriever(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test_percentile_concurrent tests the percentile tracker with concurrent access.
+func Test_percentile_concurrent(t *testing.T) {
+	// Skip the test if GOMAXPROCS is less than 2
+	// This test requires multiple threads to run concurrently
+	if runtime.GOMAXPROCS(0) < 2 {
+		t.Skip("skipping test; GOMAXPROCS is less than 2")
+	}
+
+	p, err := newPercentile()
+	if err != nil {
+		t.Fatalf("failed to create percentile: %v", err)
+	}
+
+	// Record the percentile
+	t.Run("record", func(t *testing.T) {
+
+		var wg sync.WaitGroup
+		wg.Add(1000)
+		// Record the percentile concurrently
+		for i := 0; i < 1000; i++ {
+			go func() {
+				defer wg.Done()
+
+				for i := 1; i <= 100; i++ {
+					p.recordMicroseconds(time.Duration(i) * time.Millisecond)
+				}
+			}()
+		}
+		wg.Wait()
+
+		// Check the number of records
+		if got := p.getRecordCount(); got != 100000 {
+			t.Errorf("getRecordCount() = %v, want %v", got, 100000)
+		}
+
+		// Check if the 50th percentile is within 100ms ±1ms
+		got,_ := p.percentileMicroseconds(0.5)
+		if math.Abs(float64(got - 50 * time.Millisecond)) > 1 * float64(time.Millisecond) {
+			t.Errorf("percentileMicroseconds() got = %v, want %v", got, 50 * time.Millisecond)
+		}
+
+		// Check if the 100th percentile is within 100ms ±1ms
+		got,_ = p.percentileMicroseconds(1.0)
+		if math.Abs(float64(got - 100 * time.Millisecond)) > 1 * float64(time.Millisecond) {
+			t.Errorf("percentileMicroseconds() got = %v, want %v", got, 100 * time.Millisecond)
+		}
+	})
 }

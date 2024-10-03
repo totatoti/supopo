@@ -2,6 +2,7 @@ package supopo
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/DataDog/sketches-go/ddsketch"
@@ -10,7 +11,8 @@ import (
 // percentile represents a tracker for calculating percentiles of time durations.
 type percentile struct {
 	counter uint64
-	read *ddsketch.DDSketch
+	read    *ddsketch.DDSketch
+	mu      sync.Mutex
 }
 
 // newPercentile returns a new percentileTracker that implements the percentileTracker interface.
@@ -33,6 +35,9 @@ func newPercentile() (LatencyTracker, error) {
 
 // recordMicroseconds records a time duration in microseconds.
 func (p *percentile) recordMicroseconds(v time.Duration) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	p.counter = p.counter + 1
 	return p.read.Add(float64(v.Microseconds()))
 }
@@ -50,8 +55,7 @@ func (p *percentile) percentileMicroseconds(percentile float64) (time.Duration, 
 	return time.Duration(d) * time.Microsecond, nil
 }
 
-//　getRecordCount returns the number of records.
+// 　getRecordCount returns the number of records.
 func (p *percentile) getRecordCount() uint64 {
 	return p.counter
 }
-
